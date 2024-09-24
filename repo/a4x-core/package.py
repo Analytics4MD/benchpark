@@ -1,0 +1,81 @@
+from spack import *
+
+
+class A4xCore(CachedCMakePackage):
+    homepage = "https://analytics4md.org/"
+    git = "git@github.com:Analytics4MD/a4x-core.git"
+
+    maintainers("ilumsden")
+
+    version("main", branch="main")
+    version("0.1.0", tag="v0.1.0")
+
+    # Temporary versions for testing
+    version("caliper_perf", branch="caliper_perf")
+    version("dyad_client_api", branch="dyad_client_api")
+
+    variant(
+        "log_level",
+        default="none",
+        values=("none", "trace", "debug", "info", "warn", "error", "critical"),
+    )
+    variant(
+        "plugins",
+        default="mpi,filesystem",
+        values=("mpi", "filesystem", "dyad"),
+        multi=True,
+    )
+    variant("serializers", default="nlohmann", values=("nlohmann", "none"), multi=True)
+    variant("caliper", default=False)
+
+    depends_on("mpi", type=("build", "link", "run"))
+    depends_on("nlohmann-json", type="link")
+    depends_on("fmt", type="link")
+    depends_on("spdlog", type="link")
+
+    # TODO change to specific minimum version once next release of DYAD is pinned
+    depends_on("dyad", when="plugins=dyad", type="link")
+    depends_on("dyad@exported_core", when="@dyad_client_api plugins=dyad", type="link")
+    depends_on("caliper", when="+caliper", type="link")
+
+    def initconfig_package_entries(self):
+        entries = super(A4xCore, self).initconfig_package_entries()
+        entries.append(
+            cmake_cache_option("WITH_MPI_DTL", self.spec.satisfies("plugins=mpi"))
+        )
+        entries.append(
+            cmake_cache_option("WITH_FS_DTL", self.spec.satisfies("plugins=filesystem"))
+        )
+        entries.append(
+            cmake_cache_option("WITH_DYAD_DTL", self.spec.satisfies("plugins=dyad"))
+        )
+
+        entries.append(
+            cmake_cache_option(
+                "WITH_NLOHMANN_SERIALIZATION",
+                self.spec.satisfies("serializers=nlohmann"),
+            )
+        )
+
+        if self.spec.satisfies("+caliper"):
+            if self.spec.satisfies("@=caliper_perf"):
+                entries.append(cmake_cache_option("WITH_PERF_ANNOTATIONS", True))
+            else:
+                entries.append(cmake_cache_string("A4X_PROFILER", "CALIPER"))
+
+        if self.spec.satisfies("log_level=critical"):
+            entries.append(cmake_cache_string("A4X_LOG_LEVEL", "CRITICAL"))
+        elif self.spec.satisfies("log_level=error"):
+            entries.append(cmake_cache_string("A4X_LOG_LEVEL", "ERROR"))
+        elif self.spec.satisfies("log_level=warn"):
+            entries.append(cmake_cache_string("A4X_LOG_LEVEL", "WARN"))
+        elif self.spec.satisfies("log_level=info"):
+            entries.append(cmake_cache_string("A4X_LOG_LEVEL", "INFO"))
+        elif self.spec.satisfies("log_level=debug"):
+            entries.append(cmake_cache_string("A4X_LOG_LEVEL", "DEBUG"))
+        elif self.spec.satisfies("log_level=trace"):
+            entries.append(cmake_cache_string("A4X_LOG_LEVEL", "TRACE"))
+        else:
+            entries.append(cmake_cache_string("A4X_LOG_LEVEL", "NONE"))
+
+        return entries
