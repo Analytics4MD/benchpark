@@ -8,6 +8,7 @@ class A4xBenchmark(CachedCMakePackage):
     version("main", branch="main")
     version("0.1.0", tag="v0.1.0")
 
+    version("many_to_one", branch="many_to_one")
     version("summary_print", branch="summary_print")
     version("expanded_perf", branch="expanded_perf")
 
