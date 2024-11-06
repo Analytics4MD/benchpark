@@ -25,6 +25,8 @@ class A4xBenchmark(CachedCMakePackage):
     depends_on("a4x-orchestration", type="link")
     depends_on("caliper", when="@=summary_print", type=("link", "run"))
     depends_on("adiak", when="@=summary_print", type="link")
+    depends_on("caliper", when="@=many_to_one", type=("link", "run"))
+    depends_on("adiak", when="@=many_to_one", type="link")
 
     depends_on("caliper", when="+caliper", type="link")
     depends_on("adiak", when="+caliper", type="link")
