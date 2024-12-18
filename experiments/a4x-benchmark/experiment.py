@@ -4,6 +4,8 @@ from benchpark.experiment import Experiment, SingleNode
 from benchpark.scaling import Scaling
 from benchpark.expr.builtin.caliper import Caliper
 
+from collections.abc import Sequence
+
 
 def _round(n, base):
     return base * round(n / base)
@@ -52,18 +54,25 @@ class A4xBenchmark(Experiment, SingleNode, Scaling, Caliper):
     def _print_scaling_ignored_message(self):
         print(
             "NOTICE: the workload '{}' does not support custom scaling. Ignoring scaling parameters.".format(
-                self.spec["workload"]
+                self.spec.variants["workload"][0]
             )
         )
 
     def _add_dtl_configuration(self, data_size):
-        self.add_experiment_variable("dtlType", self.spec.variants["dtl"][0])
+        self.add_experiment_variable("dtlType", self.spec.variants["dtl"][0], True)
         if self.spec.variants["dtl"][0] == "mpi":
+            if isinstance(data_size, Sequence):
+                self.add_experiment_variable(
+                    "dtlArgs", [f"{_round(ds, 1024)}" for ds in data_size]
+                )
+                return True
             self.add_experiment_variable("dtlArgs", f"{_round(data_size, 1024)}")
-        elif self.spec.variants["dtl"][0] == "filesystem":
+            return False
+        if self.spec.variants["dtl"][0] == "filesystem":
             self.add_experiment_variable(
                 "dtlArgs", f"{self.spec.variants['rootDir'][0]}"
             )
+            return False
 
     def _compute_md_ensemble_size(self):
         if self.spec.satisfies("+single_node"):
@@ -76,7 +85,6 @@ class A4xBenchmark(Experiment, SingleNode, Scaling, Caliper):
             raise NotImplementedError(
                 "Two node MD ensemble size scaling not yet implemented"
             )
-            pass
         else:
             self.add_experiment_variable("ppn", "{sys_gpus_per_node}")
             num_nodes = {"n_nodes": 2}
@@ -86,34 +94,73 @@ class A4xBenchmark(Experiment, SingleNode, Scaling, Caliper):
                 self.spec.variants["scaling-iterations"][0],
             )
             for pk, pv in scaled_num_nodes.items():
-                self.add_experiment_variable(pk, pv)
-            self.add_experiment_variable("ensembleSize", "{ppn} * {n_nodes} / 2")
+                self.add_experiment_variable(pk, pv, True)
+            self.add_experiment_variable("ensembleSize", "{ppn} * {n_nodes} / 2", True)
+            self._add_dtl_configuration(1024 * 1024)
+            self.add_experiment_variable("n_ranks", "{n_nodes} * {ppn}")
 
     def _compute_md_molecular_model_size(self):
-        pass
+        self.add_experiment_variable("n_nodes", "2")
+        self.add_experiment_variable("ensembleSize", "8")
+        self.add_experiment_variable("ppn", "8")
+        self.add_experiment_variable(
+            "numTimesteps", ["112640", "37632", "11776", "3584"]
+        )
+        self.add_experiment_variable(
+            "timestepDuration", ["930", "2790", "8640", "29290"]
+        )
+        self.add_experiment_variable(
+            "analysisIterTime", ["818400", "820260", "794880", "820120"]
+        )
+        self.add_experiment_variable(
+            "numAtoms", ["23558", "92224", "327506", "1066628"]
+        )
+        self.add_experiment_variable("stride", ["880", "294", "92", "28"])
+        dtl_args_need_zip = self._add_dtl_configuration(
+            [1024 * 1024, 5 * 1024 * 1024, 10 * 1024 * 1024, 3081024 * 1024]
+        )
+        zipped_experiment_vars = [
+            "numTimesteps",
+            "timestepDuration",
+            "analysisIterTime",
+            "numAtoms",
+            "stride",
+        ]
+        if dtl_args_need_zip:
+            zipped_experiment_vars.append("dtlArgs")
+        self.zip_exerpiment_variables(
+            "perMoleculeSettings",
+            zipped_experiment_vars,
+        )
+        # TODO add matrix if needed
 
     def _compute_md_frame_gen_freq(self):
-        pass
+        raise NotImplementedError(
+            "MD frame generation frequency scaling not yet implemented"
+        )
 
     def compute_applications_section(self):
         # TODO replace with conflicts statements above
-        if self.spec.satisfies("dtl=mpi") and self.spec.variants["rootDir"] is not None:
+        if (
+            self.spec.satisfies("dtl=mpi")
+            and self.spec.variants["rootDir"][0] is not None
+        ):
             raise BenchparkError("'rootDir' variant conflicts with 'dtl=mpi'")
         if (
             self.spec.satisfies("dtl=filesystem")
-            and self.spec.variants["rootDir"] is None
+            and self.spec.variants["rootDir"][0] is None
         ):
             raise BenchparkError("'rootDir' must be provided when 'dtl=filesystem'")
         if (
             self.spec.satisfies("+single_node")
-            and self.spec.variants["workload"] != "md_ensemble_size_scaling"
+            and self.spec.variants["workload"][0] != "md_ensemble_size_scaling"
         ):
             raise BenchparkError(
                 "'+single_node' conflicts with all workloads except 'md_ensemble_size_scaling'"
             )
         if (
             self.spec.satisfies("+two_node")
-            and self.spec.variants["workload"] != "md_ensemble_size_scaling"
+            and self.spec.variants["workload"][0] != "md_ensemble_size_scaling"
         ):
             raise BenchparkError(
                 "'+two_node' conflicts with all workloads except 'md_ensemble_size_scaling'"
