@@ -152,15 +152,14 @@ class A4xBenchmark(Experiment, SingleNode, Scaling, Caliper):
     def compute_applications_section(self):
         # TODO replace with conflicts statements above
         if (
-            self.spec.satisfies("dtl=mpi")
-            and self.spec.variants["rootDir"][0] is not None
-        ):
-            raise BenchparkError("'rootDir' variant conflicts with 'dtl=mpi'")
-        if (
             self.spec.satisfies("dtl=filesystem")
-            and self.spec.variants["rootDir"][0] is None
+            and self.spec.variants["rootDir"][0] == "~"
         ):
-            raise BenchparkError("'rootDir' must be provided when 'dtl=filesystem'")
+            raise BenchparkError(
+                "When using 'dtl=filesystem', 'rootDir' points to the directory where data will be " +
+                "written/read. It is unlikely that you mean for this to be your root directory. " +
+                "It is highly recommended that you change this variant."
+            )
         if (
             self.spec.satisfies("+single_node")
             and self.spec.variants["workload"][0] != "md_ensemble_size_scaling"
