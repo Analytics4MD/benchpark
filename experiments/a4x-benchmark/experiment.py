@@ -51,6 +51,7 @@ class A4xBenchmark(Experiment, SingleNode, Scaling, Caliper):
 
     variant(
         "rootDir",
+        default="~",
         description="root directory into which the benchmark will write/read files for file-based DTL",
     )
 
