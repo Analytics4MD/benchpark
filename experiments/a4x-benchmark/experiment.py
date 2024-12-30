@@ -12,6 +12,10 @@ def _round(n, base):
 
 
 class A4xBenchmark(Experiment, SingleNode, Scaling, Caliper):
+    # TODO this is a dummy fix. Replace with something better once everyone's
+    #      back online from the holidays
+    _name = None
+
     variant(
         "version",
         default="main",
