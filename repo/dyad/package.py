@@ -19,7 +19,8 @@ class Dyad(CachedCMakePackage, AutotoolsPackage):
     variant("ucx_tag", default=False)
     variant("ucx_rma", default=True)
     variant("caliper", default=False)
-    variant("dftracer", default=False)
+    # TODO restore dftracer variant when Benchpark supports a new enough version of Spack
+    # variant("dftracer", default=False)
     variant("logger", default="none", values=("flux", "cpp_logger", "none"))
     variant(
         "log_level", default="none", values=("debug", "info", "warn", "error", "none")
@@ -30,9 +31,11 @@ class Dyad(CachedCMakePackage, AutotoolsPackage):
     depends_on("jansson@2.10:", type="link")
 
     depends_on("cpp-logger", when="logger=cpp_logger", type="link")
-    depends_on("py-dlio-profiler-py", when="@:0.1.1 +dftracer", type="link")
+    # TODO restore dftracer variant when Benchpark supports a new enough version of Spack
+    # depends_on("py-dlio-profiler-py", when="@:0.1.1 +dftracer", type="link")
+    # TODO restore dftracer variant when Benchpark supports a new enough version of Spack
     # TODO pin minimum version for this dep once next release comes out
-    depends_on("py-pydftracer", when="@main +dftracer", type="link")
+    # depends_on("py-pydftracer", when="@main +dftracer", type="link")
     depends_on("caliper", when="+caliper", type="link")
     depends_on("ucx@1.6:", when="+ucx_tag", type="link")
     depends_on("ucx@1.6:", when="+ucx_rma", type="link")
@@ -67,11 +70,12 @@ class Dyad(CachedCMakePackage, AutotoolsPackage):
 
         if self.spec.satisfies("+caliper"):
             entries.append(cmake_cache_string("DYAD_PROFILER", "CALIPER"))
-        elif self.spec.satisfies("+dftracer"):
-            if self.spec.satisfies("@:0.1.1"):
-                entries.append(cmake_cache_string("DYAD_PROFILER", "DLIO_PROFILER"))
-            else:
-                entries.append(cmake_cache_string("DYAD_PROFILER", "DFTRACER"))
+        # TODO restore dftracer variant when Benchpark supports a new enough version of Spack
+        # elif self.spec.satisfies("+dftracer"):
+        #     if self.spec.satisfies("@:0.1.1"):
+        #         entries.append(cmake_cache_string("DYAD_PROFILER", "DLIO_PROFILER"))
+        #     else:
+        #         entries.append(cmake_cache_string("DYAD_PROFILER", "DFTRACER"))
         else:
             entries.append(cmake_cache_string("DYAD_PROFILER", "NONE"))
 
