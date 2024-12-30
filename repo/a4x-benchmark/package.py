@@ -9,7 +9,6 @@ class A4xBenchmark(CachedCMakePackage):
     version("0.1.0", tag="v0.1.0")
 
     version("many_to_one", branch="many_to_one")
-    version("summary_print", branch="summary_print")
     version("expanded_perf", branch="expanded_perf")
 
     core_plugins_values = ("mpi", "filesystem", "dyad")
@@ -23,10 +22,8 @@ class A4xBenchmark(CachedCMakePackage):
     depends_on("fmt", type="link")
     depends_on("a4x-core@constexpr_size_fix", type="link")
     depends_on("a4x-orchestration", type="link")
-    depends_on("caliper", when="@=summary_print", type=("link", "run"))
-    depends_on("adiak", when="@=summary_print", type="link")
-    depends_on("caliper", when="@=many_to_one", type=("link", "run"))
-    depends_on("adiak", when="@=many_to_one", type="link")
+    depends_on("caliper", type=("link", "run"))
+    depends_on("adiak", type="link")
 
     depends_on("caliper", when="+caliper", type="link")
     depends_on("adiak", when="+caliper", type="link")
@@ -39,10 +36,5 @@ class A4xBenchmark(CachedCMakePackage):
 
     def initconfig_package_entries(self):
         entries = super(A4xBenchmark, self).initconfig_package_entries()
-
-        if not self.spec.satisfies("@summary_print") and self.spec.satisfies(
-            "+caliper"
-        ):
-            entries.append(cmake_cache_string("A4X_PROFILER", "CALIPER"))
 
         return entries
