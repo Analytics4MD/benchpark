@@ -50,9 +50,21 @@ class A4xBenchmark(Experiment, SingleNode, Scaling, Caliper):
     )
 
     variant(
-        "rootDir",
+        "root_dir",
         default="~",
         description="root directory into which the benchmark will write/read files for file-based DTL",
+    )
+
+    variant(
+        "molecule_for_frequency_scaling",
+        default="JAC",
+        values=(
+            "JAC",
+            "jac",
+            "STMV",
+            "stmv",
+        ),
+        description="molecule to use when running the 'md_frame_gen_frequency_scaling' workload",
     )
 
     def _print_scaling_ignored_message(self, extra_condition=""):
@@ -75,7 +87,7 @@ class A4xBenchmark(Experiment, SingleNode, Scaling, Caliper):
             return False
         if self.spec.variants["dtl"][0] == "filesystem":
             self.add_experiment_variable(
-                "dtlArgs", f"{self.spec.variants['rootDir'][0]}"
+                "dtlArgs", f"{self.spec.variants['root_dir'][0]}"
             )
             return False
 
@@ -146,18 +158,49 @@ class A4xBenchmark(Experiment, SingleNode, Scaling, Caliper):
         # TODO add matrix if needed
 
     def _compute_md_frame_gen_freq(self):
-        raise NotImplementedError(
-            "MD frame generation frequency scaling not yet implemented"
+        self.add_experiment_variable("n_nodes", "2")
+        self.add_experiment_variable("ensembleSize", "8")
+        self.add_experiment_variable("ppn", "8")
+        self.add_experiment_variable("stride", ["1", "5", "10", "50"])
+        self.add_experiment_variable("numTimesteps", ["128", "640", "1280", "6400"])
+        dtl_zipped_args = [
+            "stride",
+            "numTimesteps",
+            "analysisIterTime",
+        ]
+        dtl_frame_size_cap = 0
+        if str(self.spec.variants["molecule_for_frequency_scaling"][0]).lower() == "jac":
+            self.add_experiment_variable("numAtoms", "23558")
+            self.add_experiment_variable("timestepDuration", "930")
+            self.add_experiment_variable("analysisIterTime", ["930", "4650", "9300", "46500"])
+            dtl_frame_size_cap = 1024 * 1024
+        elif str(self.spec.variants["molecule_for_frequency_scaling"][0]).lower() == "stmv":
+            self.add_experiment_variable("numAtoms", "1066628")
+            self.add_experiment_variable("timestepDuration", "29290")
+            self.add_experiment_variable("analysisIterTime", ["29290", "146450", "292900", "1464500"])
+            dtl_frame_size_cap = 3081024 * 1024
+        else:
+            raise BenchparkError(
+                "Invalid value for 'molecule_for_frequency_scaling': " +
+                f"{self.spec.variants['molecule_for_frequency_scaling'][0]}"
+            )
+        dtl_args_need_zip = self._add_dtl_configuration(dtl_frame_size_cap)
+        if dtl_args_need_zip:
+            dtl_zipped_args.append("dtlArgs")
+        self.zip_experiment_variables(
+            "perStrideSettings",
+            dtl_zipped_args,
         )
+        # TODO add matrix if needed
 
     def compute_applications_section(self):
         # TODO replace with conflicts statements above
         if (
             self.spec.satisfies("dtl=filesystem")
-            and self.spec.variants["rootDir"][0] == "~"
+            and self.spec.variants["root_dir"][0] == "~"
         ):
             raise BenchparkError(
-                "When using 'dtl=filesystem', 'rootDir' points to the directory where data will be " +
+                "When using 'dtl=filesystem', 'root_dir' points to the directory where data will be " +
                 "written/read. It is unlikely that you mean for this to be your root directory. " +
                 "It is highly recommended that you change this variant."
             )
