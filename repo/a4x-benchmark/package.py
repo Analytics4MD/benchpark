@@ -21,7 +21,7 @@ class A4xBenchmark(CachedCMakePackage):
     depends_on("a4x-orchestration", type="link")
 
     # Overrides for other A4X packages for specific benchmark versions
-    depends_on("a4x-core@constexpr_size_fix", when="@main", type="link")
+    depends_on("a4x-core@main", when="@main", type="link")
     depends_on("a4x-orchestration@main", when="@main", type="link")
 
     depends_on("mpi", type=("build", "link"))
