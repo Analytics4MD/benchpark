@@ -38,7 +38,7 @@ class A4xBenchmark(ExecutableApplication):
         name="dtlType",
         default="mpi",
         description="data transport layer (DTL) to use",
-        workload=[
+        workloads=[
             "md_ensemble_size_scaling",
             "md_molecular_model_size_scaling",
         ],
@@ -47,7 +47,7 @@ class A4xBenchmark(ExecutableApplication):
         name="dtlArgs",
         default="1024",
         description="arguments to configure the DTL",
-        workload=[
+        workloads=[
             "md_ensemble_size_scaling",
             "md_molecular_model_size_scaling",
         ],
@@ -61,7 +61,7 @@ class A4xBenchmark(ExecutableApplication):
         name="ensembleSize",
         default="1",
         description="number of producer-consumer pairs to run in parallel as an ensemble workflow",
-        workload=[
+        workloads=[
             "md_ensemble_size_scaling",
             "md_molecular_model_size_scaling",
             "md_frame_gen_frequency_scaling",
@@ -71,7 +71,7 @@ class A4xBenchmark(ExecutableApplication):
         name="ppn",
         default="2",
         description="number of processes per node",
-        workload=[
+        workloads=[
             "md_ensemble_size_scaling",
             "md_molecular_model_size_scaling",
             "md_frame_gen_frequency_scaling",
@@ -81,7 +81,7 @@ class A4xBenchmark(ExecutableApplication):
         name="numTimesteps",
         default="112640",
         description="number of emulated md timesteps to run per producer",
-        workload=[
+        workloads=[
             "md_molecular_model_size_scaling",
             "md_frame_gen_frequency_scaling",
         ],
@@ -90,7 +90,7 @@ class A4xBenchmark(ExecutableApplication):
         name="timestepDuration",
         default="930",
         description="time (in microseconds) for a single md timestep",
-        workload=[
+        workloads=[
             "md_molecular_model_size_scaling",
             "md_frame_gen_frequency_scaling",
         ],
@@ -99,7 +99,7 @@ class A4xBenchmark(ExecutableApplication):
         name="analysisIterTime",
         default="818400",
         description="time (in microseconds) that analysis (i.e., consumer) takes per iteration",
-        workload=[
+        workloads=[
             "md_molecular_model_size_scaling",
             "md_frame_gen_frequency_scaling",
         ],
@@ -108,7 +108,7 @@ class A4xBenchmark(ExecutableApplication):
         name="numAtoms",
         default="23558",
         description="number of atoms in the molecular system",
-        workload=[
+        workloads=[
             "md_molecular_model_size_scaling",
             "md_frame_gen_frequency_scaling",
         ],
@@ -117,7 +117,7 @@ class A4xBenchmark(ExecutableApplication):
         name="stride",
         default="880",
         description="number of md timesteps to run before creating a frame. must evenly divide numtimesteps",
-        workload=[
+        workloads=[
             "md_molecular_model_size_scaling",
             "md_frame_gen_frequency_scaling",
         ],
@@ -147,84 +147,84 @@ class A4xBenchmark(ExecutableApplication):
     #     name="numNodes",
     #     default=1,
     #     description="number of nodes for the run",
-    #     workload=["one_to_one"],
+    #     workloads=["one_to_one"],
     # )
     # workload_variable(
     #     name="numIters",
     #     default=1,
     #     description="number of iterations for the producer and consumer to run",
-    #     workload=["one_to_one", "one_to_many"],
+    #     workloads=["one_to_one", "one_to_many"],
     # )
     # workload_variable(
     #     name="producerIterTime",
     #     default=1000,
     #     description="time (in microseconds) that the producer spends in 'computation' per iteration",
-    #     workload=["one_to_one", "one_to_many"],
+    #     workloads=["one_to_one", "one_to_many"],
     # )
     # workload_variable(
     #     name="consumerIterTime",
     #     default=1000,
     #     description="time (in microseconds) that the consumer spends in 'computation' per iteration",
-    #     workload=["one_to_one", "one_to_many"],
+    #     workloads=["one_to_one", "one_to_many"],
     # )
     # workload_variable(
     #     name="dataSize",
     #     default=1024,
     #     description="amount of data (in bytes) passed between a producer and a consumer per iteration",
-    #     workload=["one_to_one", "one_to_many"],
+    #     workloads=["one_to_one", "one_to_many"],
     # )
     # workload_variable(
     #     name="ensembleSize",
     #     default=1,
     #     description="number of producer-consumer pairs to run in parallel as an ensemble workflow",
-    #     workload=["one_to_one_md"],
+    #     workloads=["one_to_one_md"],
     # )
     # workload_variable(
     #     name="numTimeSteps",
     #     default=112640,
     #     description="number of emulated md timesteps to run per producer",
-    #     workload=["one_to_one_md"],
+    #     workloads=["one_to_one_md"],
     # )
     # workload_variable(
     #     name="timeStepDuration",
     #     default=930,
     #     description="time (in microseconds) for a single md timestep",
-    #     workload=["one_to_one_md"],
+    #     workloads=["one_to_one_md"],
     # )
     # workload_variable(
     #     name="analysisIterTime",
     #     default=818400,
     #     description="time (in microseconds) that analysis (i.e., consumer) takes per iteration",
-    #     workload=["one_to_one_md"],
+    #     workloads=["one_to_one_md"],
     # )
     # workload_variable(
     #     name="numAtoms",
     #     default=23558,
     #     description="number of atoms in the molecular system",
-    #     workload=["one_to_one_md"],
+    #     workloads=["one_to_one_md"],
     # )
     # workload_variable(
     #     name="stride",
     #     default=880,
     #     description="number of md timesteps to run before creating a frame. must evenly divide numtimesteps",
-    #     workload=["one_to_one_md"],
+    #     workloads=["one_to_one_md"],
     # )
     # workload_variable(
     #     name="numProducers",
     #     default=1,
     #     description="number of producers in the workflow",
-    #     workload=["one_to_many"],
+    #     workloads=["one_to_many"],
     # )
     # workload_variable(
     #     name="numConsumersPerProducer",
     #     default=2,
     #     description="number of consumers in the workflow for each producer",
-    #     workload=["one_to_many"],
+    #     workloads=["one_to_many"],
     # )
     # workload_variable(
     #     name="taskmap",
     #     default="block",
     #     description="method for mapping workflow tasks to nodes",
     #     values=["block", "cyclic"],
-    #     workload=["one_to_many"],
+    #     workloads=["one_to_many"],
     # )
