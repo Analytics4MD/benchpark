@@ -8,7 +8,7 @@ class A4xBenchmark(ExecutableApplication):
 
     executable(
         "md_ensemble_size_scaling",
-        "a4x-benchmark OneToOneMD {ensembleSize} {ppn} 112640 930 818400 23558 880 {dtlType} {dtlArgs}",
+        "a4x_benchmark OneToOneMD {ensembleSize} {ppn} 112640 930 818400 23558 880 {dtlType} {dtlArgs}",
         use_mpi=True,
     )
     # Ensemble Size Scaling workload from https://doi.org/10.1109/IPDPSW63119.2024.00111
@@ -19,7 +19,7 @@ class A4xBenchmark(ExecutableApplication):
 
     executable(
         "md_molecular_model_size_and_frame_gen_freq_scaling",
-        "a4x-benchmark OneToOneMD {ensembleSize} {ppn} {numTimesteps} {timestepDuration} {analysisIterTime} {numAtoms} {stride} {dtlType} {dtlArgs}",
+        "a4x_benchmark OneToOneMD {ensembleSize} {ppn} {numTimesteps} {timestepDuration} {analysisIterTime} {numAtoms} {stride} {dtlType} {dtlArgs}",
         use_mpi=True,
     )
     # Molecular Model Size Scaling workload from https://doi.org/10.1109/IPDPSW63119.2024.00111
@@ -127,19 +127,19 @@ class A4xBenchmark(ExecutableApplication):
 
     # executable(
     #     "one_to_one_md",
-    #     "a4x-benchmark OneToOneMD {ensembleSize} {ppn} {numTimesteps} {timestepDuration} {analysisIterTime} {numAtoms} {stride} {dtlType} {dtlArgs}",
+    #     "a4x_benchmark OneToOneMD {ensembleSize} {ppn} {numTimesteps} {timestepDuration} {analysisIterTime} {numAtoms} {stride} {dtlType} {dtlArgs}",
     # )
     # workload("one_to_one_md", executables=["one_to_one_md"])
 
     # exectuable(
     #     "one_to_one",
-    #     "a4x-benchmark OneToOne {num_nodes} {ppn} {numIters} {producerIterTime} {consumerIterTime} {dataSize} {dtlType} {dtlArgs}",
+    #     "a4x_benchmark OneToOne {num_nodes} {ppn} {numIters} {producerIterTime} {consumerIterTime} {dataSize} {dtlType} {dtlArgs}",
     # )
     # workload("one_to_one", executables=["one_to_one"])
 
     # exectuable(
     #     "one_to_many",
-    #     "a4x-benchmark OneToMany {num_nodes} {ppn} {numProducers} {numConsumersPerProducer} {taskmap} {numIters} {producerIterTime} {consumerIterTime} {dataSize} {dtlType} {dtlArgs}",
+    #     "a4x_benchmark OneToMany {num_nodes} {ppn} {numProducers} {numConsumersPerProducer} {taskmap} {numIters} {producerIterTime} {consumerIterTime} {dataSize} {dtlType} {dtlArgs}",
     # )
     # workload("one_to_many", executables=["one_to_many"])
 
