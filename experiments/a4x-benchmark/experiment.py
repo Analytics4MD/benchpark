@@ -106,7 +106,7 @@ class A4xBenchmark(Experiment, SingleNode, Scaling, Caliper):
             )
             for pk, pv in scaled_num_nodes.items():
                 self.add_experiment_variable(pk, pv, True)
-            self.add_experiment_variable("ensembleSize", "{ppn} * {n_nodes} / 2", True)
+            self.add_experiment_variable("ensembleSize", "{ppn} * {n_nodes} // 2", True)
             self.add_experiment_variable("n_ranks", "{n_nodes} * {ppn}")
             self._add_dtl_configuration(1024 * 1024)
 
