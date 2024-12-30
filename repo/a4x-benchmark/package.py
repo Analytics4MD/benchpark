@@ -17,14 +17,18 @@ class A4xBenchmark(CachedCMakePackage):
     )
     variant("caliper", default=False)
 
+    depends_on("a4x-core", type="link")
+    depends_on("a4x-orchestration", type="link")
+
+    # Overrides for other A4X packages for specific benchmark versions
+    depends_on("a4x-core@constexpr_size_fix", when="@main", type="link")
+    depends_on("a4x-orchestration@main", when="@main", type="link")
+
     depends_on("mpi", type=("build", "link"))
     depends_on("nlohmann-json", type="link")
     depends_on("fmt", type="link")
-    depends_on("a4x-core@constexpr_size_fix", type="link")
-    depends_on("a4x-orchestration", type="link")
     depends_on("caliper", type=("link", "run"))
     depends_on("adiak", type="link")
-
     depends_on("caliper", when="+caliper", type="link")
     depends_on("adiak", when="+caliper", type="link")
     depends_on("a4x-core +caliper", when="+caliper")
