@@ -77,14 +77,20 @@ class A4xBenchmark(Experiment, SingleNode, Scaling, Caliper):
     def _compute_md_ensemble_size(self):
         if self.spec.satisfies("+single_node"):
             self._print_scaling_ignored_message()
-            raise NotImplementedError(
-                "Single node MD ensemble size scaling not yet implemented"
-            )
+            self.add_experiment_variable("n_nodes", "1")
+            self.add_experiment_variable("ensembleSizeExp", "range(1, ceil({sys_gpus_per_node} / 2))")
+            self.add_experiment_variable("ensembleSize", "2**({ensembleSizeExp} - 1)")
+            self.add_experiment_variable("ppn", "2 * {ppn_exp}")
+            self.add_experiment_variable("n_ranks", "{ppn}")
+            self._add_dtl_configuration(1024 * 1024)
         elif self.spec.satisfies("+two_node"):
             self._print_scaling_ignored_message()
-            raise NotImplementedError(
-                "Two node MD ensemble size scaling not yet implemented"
-            )
+            self.add_experiment_variable("n_nodes", "2")
+            self.add_experiment_variable("ppnExp", "range(0, ceil({sys_gpus_per_node} / 2))")
+            self.add_experiment_variable("ppn", "2**{ppn_exp}")
+            self.add_experiment_variable("ensembleSize", "{ppn}")
+            self.add_experiment_variable("n_ranks", "{ppn} * 2")
+            self._add_dtl_configuration(1024 * 1024)
         else:
             self.add_experiment_variable("ppn", "{sys_gpus_per_node}")
             num_nodes = {"n_nodes": 2}
@@ -96,8 +102,8 @@ class A4xBenchmark(Experiment, SingleNode, Scaling, Caliper):
             for pk, pv in scaled_num_nodes.items():
                 self.add_experiment_variable(pk, pv, True)
             self.add_experiment_variable("ensembleSize", "{ppn} * {n_nodes} / 2", True)
-            self._add_dtl_configuration(1024 * 1024)
             self.add_experiment_variable("n_ranks", "{n_nodes} * {ppn}")
+            self._add_dtl_configuration(1024 * 1024)
 
     def _compute_md_molecular_model_size(self):
         self.add_experiment_variable("n_nodes", "2")
