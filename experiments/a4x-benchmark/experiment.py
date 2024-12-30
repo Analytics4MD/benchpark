@@ -101,8 +101,8 @@ class A4xBenchmark(Experiment, SingleNode, Scaling, Caliper):
             num_nodes = {"n_nodes": 2}
             scaled_num_nodes = self.scale_experiment_variables(
                 {tuple(num_nodes.keys()): list(num_nodes.values())},
-                self.spec.variants["scaling-factor"][0],
-                self.spec.variants["scaling-iterations"][0],
+                int(self.spec.variants["scaling-factor"][0]),
+                int(self.spec.variants["scaling-iterations"][0]),
             )
             for pk, pv in scaled_num_nodes.items():
                 self.add_experiment_variable(pk, pv, True)
