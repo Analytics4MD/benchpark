@@ -21,7 +21,7 @@ class A4xBenchmark(CachedCMakePackage):
     depends_on("mpi", type=("build", "link"))
     depends_on("nlohmann-json", type="link")
     depends_on("fmt", type="link")
-    depends_on("a4x-core", type="link")
+    depends_on("a4x-core@constexpr_size_fix", type="link")
     depends_on("a4x-orchestration", type="link")
     depends_on("caliper", when="@=summary_print", type=("link", "run"))
     depends_on("adiak", when="@=summary_print", type="link")

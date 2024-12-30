@@ -195,7 +195,7 @@ class A4xBenchmark(Experiment, SingleNode, Scaling, Caliper):
         self.add_spack_spec(
             self.name,
             [
-                f"a4x-benchmark@{app_version} core_plugins={dtl_name}",
+                f"a4x-benchmark@{app_version} core_plugins={dtl_name} ",  # Extra space is added so that additional variants (e.g., +caliper) don't conflict with 'core_plugins'
                 system_specs["compiler"],
             ],
         )

@@ -11,6 +11,7 @@ class A4xCore(CachedCMakePackage):
     version("0.1.0", tag="v0.1.0")
 
     # Temporary versions for testing
+    version("constexpr_size_fix", branch="constexpr_size_fix")
     version("caliper_perf", branch="caliper_perf")
     version("dyad_client_api", branch="dyad_client_api")
 
