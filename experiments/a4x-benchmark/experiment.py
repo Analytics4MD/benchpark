@@ -55,10 +55,11 @@ class A4xBenchmark(Experiment, SingleNode, Scaling, Caliper):
         description="root directory into which the benchmark will write/read files for file-based DTL",
     )
 
-    def _print_scaling_ignored_message(self):
+    def _print_scaling_ignored_message(self, extra_condition=""):
         print(
-            "NOTICE: the workload '{}' does not support custom scaling. Ignoring scaling parameters.".format(
-                self.spec.variants["workload"][0]
+            "NOTICE: the workload '{}' does not support custom scaling{}. Ignoring scaling parameters.".format(
+                self.spec.variants["workload"][0],
+                extra_condition,
             )
         )
 
@@ -80,7 +81,7 @@ class A4xBenchmark(Experiment, SingleNode, Scaling, Caliper):
 
     def _compute_md_ensemble_size(self):
         if self.spec.satisfies("+single_node"):
-            self._print_scaling_ignored_message()
+            self._print_scaling_ignored_message(" when run with '+single_node'")
             self.add_experiment_variable("n_nodes", "1")
             self.add_experiment_variable("ensembleSizeExp", "range(1, ceil({sys_gpus_per_node} / 2))")
             self.add_experiment_variable("ensembleSize", "2**({ensembleSizeExp} - 1)")
@@ -88,7 +89,7 @@ class A4xBenchmark(Experiment, SingleNode, Scaling, Caliper):
             self.add_experiment_variable("n_ranks", "{ppn}")
             self._add_dtl_configuration(1024 * 1024)
         elif self.spec.satisfies("+two_node"):
-            self._print_scaling_ignored_message()
+            self._print_scaling_ignored_message(" when run with '+two_node'")
             self.add_experiment_variable("n_nodes", "2")
             self.add_experiment_variable("ppnExp", "range(0, ceil({sys_gpus_per_node} / 2))")
             self.add_experiment_variable("ppn", "2**{ppn_exp}")
