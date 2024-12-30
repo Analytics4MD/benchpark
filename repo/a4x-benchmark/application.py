@@ -59,7 +59,7 @@ class A4xBenchmark(ExecutableApplication):
     # set based on the number of GPUs per node.
     workload_variable(
         name="ensembleSize",
-        default=1,
+        default="1",
         description="number of producer-consumer pairs to run in parallel as an ensemble workflow",
         workflow=[
             "md_ensemble_size_scaling",
@@ -69,7 +69,7 @@ class A4xBenchmark(ExecutableApplication):
     )
     workload_variable(
         name="ppn",
-        default=2,
+        default="2",
         description="number of processes per node",
         workflow=[
             "md_ensemble_size_scaling",
@@ -79,7 +79,7 @@ class A4xBenchmark(ExecutableApplication):
     )
     workload_variable(
         name="numTimesteps",
-        default=112640,
+        default="112640",
         description="number of emulated md timesteps to run per producer",
         workflow=[
             "md_molecular_model_size_scaling",
@@ -88,7 +88,7 @@ class A4xBenchmark(ExecutableApplication):
     )
     workload_variable(
         name="timestepDuration",
-        default=930,
+        default="930",
         description="time (in microseconds) for a single md timestep",
         workflow=[
             "md_molecular_model_size_scaling",
@@ -97,7 +97,7 @@ class A4xBenchmark(ExecutableApplication):
     )
     workload_variable(
         name="analysisIterTime",
-        default=818400,
+        default="818400",
         description="time (in microseconds) that analysis (i.e., consumer) takes per iteration",
         workflow=[
             "md_molecular_model_size_scaling",
@@ -106,7 +106,7 @@ class A4xBenchmark(ExecutableApplication):
     )
     workload_variable(
         name="numAtoms",
-        default=23558,
+        default="23558",
         description="number of atoms in the molecular system",
         workflow=[
             "md_molecular_model_size_scaling",
@@ -115,7 +115,7 @@ class A4xBenchmark(ExecutableApplication):
     )
     workload_variable(
         name="stride",
-        default=880,
+        default="880",
         description="number of md timesteps to run before creating a frame. must evenly divide numtimesteps",
         workflow=[
             "md_molecular_model_size_scaling",
