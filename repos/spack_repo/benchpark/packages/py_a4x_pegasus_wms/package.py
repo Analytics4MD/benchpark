@@ -41,24 +41,18 @@ class PyA4xPegasusWms(PythonPackage):
         ),
     )
 
-    # ---------------------------------------------------------------------------
-    # Python version requirement
-    # ---------------------------------------------------------------------------
-
     depends_on("python@3.8:", type=("build", "run"))
-
-    # ---------------------------------------------------------------------------
-    # Build dependencies
-    # ---------------------------------------------------------------------------
 
     depends_on("py-setuptools@44:", type="build")
     depends_on("py-wheel", type="build")
 
-    # ---------------------------------------------------------------------------
-    # Runtime dependencies
-    # ---------------------------------------------------------------------------
-
     depends_on("py-a4x-orchestration@0.1.0b5:0.1", type=("build", "run"))
 
+    # If the "api_only" variant is False, we depend on all of Pegasus. This is the
+    # default because you need a full Pegasus install to properly plan and run workflows.
+    #
+    # If a user really only wants the Python API of Pegasus, they can enable "+api_only".
+    # In this case, we depend on py-pegasus-wms-api (equivalent to PyPI's pegasus-wms.api)
+    # instead of full Pegasus.
     depends_on("pegasus-wms@5:", when="~api_only", type=("build", "run"))
     depends_on("py-pegasus-wms-api@5:", when="+api_only", type=("build", "run"))

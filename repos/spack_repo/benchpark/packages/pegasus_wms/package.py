@@ -31,12 +31,9 @@ class PegasusWms(Package):
     # -------------------------------------------------------------------------
     # Versions
     #
-    # The tarballs for each version of Pegasus are architecture- and OS-specific.
-    # As a result, the `version()` entries below do not have SHAs. The SHA
-    # validation is performed manually in the `install()` function.
-    #
-    # Install with `spack install --no-checksum pegasus` to suppress the
-    # warning, or set `checksum: false` for this package in your spack.yaml.
+    # To handle binary installs correctly, we fetch the source tarball using
+    # the "version()" directive, and we fetch the binary tarball using the
+    # "resource()" directive.
     # -------------------------------------------------------------------------
 
     version(
@@ -97,9 +94,9 @@ class PegasusWms(Package):
     # -------------------------------------------------------------------------
     # Per-platform tarball SHA256 checksums
     #
-    # Keys are "<arch>/<pegasus_os_label>" where:
+    # Keys are "<version>/<arch>/<pegasus_os_label>" where:
     #   arch             — spec.architecture.target.family.name (x86_64 | aarch64)
-    #   pegasus_os_label — resolved by _pegasus_os_label(spec) below
+    #   pegasus_os_label — a Pegasus-native operating system name
     #
     # _binary_sha256 holds checksums for the binary (pegasus-binary-*) tarballs.
     # _worker_sha256 holds checksums for the worker (pegasus-worker-*) tarballs.
@@ -122,7 +119,6 @@ class PegasusWms(Package):
                 "ubuntu_24": "4ec57c7dee9010245bef2873338ef270a78f326a0d0cd50eaaf32d5aa652a1a5",
                 "ubuntu_26": "19fc4b3a0fc62c667ccc19085f8523fa3ae1946bed39b5a79bcae5dd0fc987c4",
             },
-            # x86_64
             "x86_64": {
                 "alpine_3": "84a9191c46c17dafcd2ada223f4499d18593c6b4c38c4cd551a2d969cca29934",
                 "deb_11": "dea736f379d13a63beda46e346c94f30b148cf5e64275a483466641b0073065c",
@@ -265,6 +261,7 @@ class PegasusWms(Package):
         },
     }
 
+    # A mapping of Pegasus OS names to corresponding Spack OS names
     _reverse_os_map = {
         "rhel_7": ["almalinux7", "rhel7", "centos7"],
         "rhel_8": ["almalinux8", "rhel8", "rocky8", "centos8"],
@@ -283,16 +280,27 @@ class PegasusWms(Package):
         "alpine_3": ["alpine3"],
     }
 
+    # Directories under "spack-src" where the contents of each tarball
+    # should be extracted
     _binary_tarball_extract_dest = "binary_tarball_extract"
     _worker_tarball_extract_dest = "worker_tarball_extract"
 
+    # This nested for loop executes the "resource()" directives that tell
+    # Spack to fetch the correct binary tarball for the version of HTCondor,
+    # requested architecture, and requested operating system.
     for _ver, _ver_dict in _binary_sha256.items():
         for _arch, _arch_dict in _ver_dict.items():
             for _os_label, _sha in _arch_dict.items():
+                # Create the tarball name and URL based on:
+                #   * The version
+                #   * The architecture (e.g., x86_64, aarch64)
+                #   * The Pegasus OS name (e.g., ubuntu_22, rhel_8)
                 _tarball_name = f"pegasus-binary-{_ver}-{_arch}_{_os_label}.tar.gz"
                 _tarball_url = (
                     f"https://download.pegasus.isi.edu/pegasus/{_ver}/{_tarball_name}"
                 )
+                # Use _reverse_os_map to convert the HTCondor OS name to a list of
+                # corresponding Spack OS names
                 _spack_oses = _reverse_os_map.get(
                     _os_label, [_os_label.replace("_", "")]
                 )
@@ -303,171 +311,41 @@ class PegasusWms(Package):
                         sha256=_sha,
                         when=f"@{_ver} target={_arch}: os={_spack_os}",
                         destination=_binary_tarball_extract_dest,
-                        # placement=".",
                     )
 
+    # This nested for loop executes the "resource()" directives that tell
+    # Spack to fetch the correct worker tarball for the version of HTCondor,
+    # requested architecture, and requested operating system.
     for _ver, _ver_dict in _worker_sha256.items():
         for _arch, _arch_dict in _ver_dict.items():
             for _os_label, _sha in _arch_dict.items():
+                # Create the tarball name and URL based on:
+                #   * The version
+                #   * The architecture (e.g., x86_64, aarch64)
+                #   * The Pegasus OS name (e.g., ubuntu_22, rhel_8)
                 _tarball_name = f"pegasus-worker-{_ver}-{_arch}_{_os_label}.tar.gz"
                 _tarball_url = (
                     f"https://download.pegasus.isi.edu/pegasus/{_ver}/{_tarball_name}"
                 )
+                # Use _reverse_os_map to convert the HTCondor OS name to a list of
+                # corresponding Spack OS names
                 _spack_oses = _reverse_os_map.get(
                     _os_label, [_os_label.replace("_", "")]
                 )
                 for _spack_os in _spack_oses:
+                    # Note: Pegasus expects the worker tarball to remain a tarball
+                    #       (i.e., to not be extracted). We use "expand=False" to ensure this.
                     resource(
                         name=f"worker-{_arch}-{_os_label}",
                         url=_tarball_url,
                         sha256=_sha,
                         when=f"@{_ver} target={_arch}: os={_spack_os} +worker",
                         destination=_worker_tarball_extract_dest,
-                        # placement=".",
                         expand=False,
                     )
 
-    # -------------------------------------------------------------------------
-    # OS / architecture detection helpers
-    # -------------------------------------------------------------------------
-
-    # @staticmethod
-    # def _pegasus_arch(spec):
-    #     """Return the Pegasus architecture string from the concretized spec."""
-    #     family = spec.architecture.target.family.name
-    #     if family in ("x86_64", "aarch64"):
-    #         return family
-    #     raise InstallError(
-    #         f"Unsupported architecture for Pegasus binary install: {family!s}.\n"
-    #         f"Pegasus binary tarballs are only available for x86_64 and aarch64.\n"
-    #         f"Source builds are not yet implemented in this package."
-    #     )
-
-    # @staticmethod
-    # def _pegasus_os_label(spec):
-    #     """Map `spec.architecture.os` to the Pegasus platform string used in
-    #     tarball filenames (e.g. `rhel_9`, `ubuntu_24`, `deb_12`).
-    #     """
-    #     spack_os = spec.architecture.os
-
-    #     # Each tuple is (prefix, label_fn) where label_fn accepts the version
-    #     # suffix that follows the prefix in the spack_os string.
-    #     os_map = [
-    #         # RHEL family -- Pegasus uses "rhel" for all RHEL-compatible distros
-    #         ("almalinux", lambda v: f"rhel_{v.split('.')[0]}"),
-    #         ("rhel", lambda v: f"rhel_{v.split('.')[0]}"),
-    #         ("centos", lambda v: f"rhel_{v.split('.')[0]}"),
-    #         ("rocky", lambda v: f"rhel_{v.split('.')[0]}"),
-    #         ("ol", lambda v: f"rhel_{v.split('.')[0]}"),
-    #         # Debian family
-    #         ("ubuntu", lambda v: f"ubuntu_{v.split('.')[0]}"),
-    #         ("debian", lambda v: f"deb_{v.split('.')[0]}"),
-    #         # SUSE
-    #         ("opensuse-leap", lambda v: f"suse_{v.split('.')[0]}"),
-    #         ("sles", lambda v: f"suse_{v.split('.')[0]}"),
-    #         # Alpine
-    #         ("alpine", lambda v: f"alpine_{v.split('.')[0]}"),
-    #     ]
-
-    #     # Checks if the OS name from Spack matches a prefix in the mapping
-    #     # above. If so, get the version suffix and pass it to the corresponding
-    #     # lambda in the mapping. The result of the mapping gets returned.
-    #     for prefix, label_fn in os_map:
-    #         if spack_os.startswith(prefix):
-    #             version_suffix = spack_os[len(prefix) :]
-    #             return label_fn(version_suffix)
-
-    #     raise InstallError(
-    #         f"No Pegasus binary tarball mapping for Spack OS {spack_os!s}.\n"
-    #         f"Add an entry to _pegasus_os_label() or check\n"
-    #         f"  https://download.pegasus.isi.edu/pegasus/<version>/"
-    #     )
-
-    # # -------------------------------------------------------------------------
-    # # URL / fetch helpers
-    # # -------------------------------------------------------------------------
-
-    # def _platform_key(self):
-    #     """Return the '<arch>/<os_label>' key for the current spec."""
-    #     arch = self._pegasus_arch(self.spec)
-    #     os_label = self._pegasus_os_label(self.spec)
-    #     return f"{arch}/{os_label}"
-
-    # def _tarball_basename(self, kind, version=None):
-    #     """Return the filename for a Pegasus tarball.
-
-    #     Args:
-    #         kind: Either "binary" or "worker".
-    #         version: A provided version string or None. If None, get the version from `self.spec`.
-    #     """
-    #     if kind not in ("binary", "worker"):
-    #         tty.die(
-    #             f"INTERNAL PACKAGE ERROR: 'kind' must be either 'binary' or 'worker'. Got {kind}"
-    #         )
-    #     if version is None:
-    #         ver = str(self.spec.version)
-    #     else:
-    #         ver = version
-    #     arch = self._pegasus_arch(self.spec)
-    #     os_label = self._pegasus_os_label(self.spec)
-    #     return f"pegasus-{kind}-{ver}-{arch}_{os_label}.tar.gz"
-
-    # def url_for_version(self, version):
-    #     """Return the platform-specific binary tarball URL for `version`."""
-    #     ver = str(version)
-    #     name = self._tarball_basename("binary", version=ver)
-    #     return f"https://download.pegasus.isi.edu/pegasus/{ver}/{name}"
-
-    # def _worker_tarball_url(self):
-    #     """Return the URL for the worker tarball matching the current spec."""
-    #     ver = str(self.spec.version)
-    #     name = self._tarball_basename("worker")
-    #     return f"https://download.pegasus.isi.edu/pegasus/{ver}/{name}"
-
-    # def _get_sha256(self, kind):
-    #     """Look up a SHA256 from one of the checksum dicts for the current spec.
-
-    #     Args:
-    #         kind: Either "binary" or "worker"
-    #     """
-    #     if kind not in ("binary", "worker"):
-    #         tty.die(
-    #             f"INTERNAL PACKAGE ERROR: 'kind' must be either 'binary' or 'worker'. Got {kind}"
-    #         )
-    #     ver = str(self.spec.version)
-    #     key = self._platform_key()
-    #     sha_dict = self._binary_sha256 if kind == "binary" else self._worker_sha256
-    #     try:
-    #         return sha_dict[ver][key]
-    #     except KeyError:
-    #         raise InstallError(
-    #             f"No {kind} SHA256 entry for version={ver}, platform={key}.\n"
-    #             f"Check the SHA256 dicts in the package and add the hash.\n"
-    #             f"Download the tarball from:\n"
-    #             f"  https://download.pegasus.isi.edu/pegasus/{ver}/\n"
-    #             f"and run: sha256sum <tarball>"
-    #         )
-
-    # def _verify_sha256(self, filepath, expected):
-    #     """Verify the SHA256 checksum of a file against an expected value."""
-    #     tty.msg(f"Verifying SHA256 of {os.path.basename(filepath)}...")
-    #     hasher = hashlib.sha256()
-    #     with open(filepath, "rb") as f:
-    #         for chunk in iter(lambda: f.read(1 << 20), b""):
-    #             hasher.update(chunk)
-    #     actual = hasher.hexdigest()
-    #     if actual != expected:
-    #         raise InstallError(
-    #             f"SHA256 mismatch for {os.path.basename(filepath)}:\n"
-    #             f"  expected: {expected}\n"
-    #             f"  actual:   {actual}"
-    #         )
-
-    # -------------------------------------------------------------------------
-    # Install
-    # -------------------------------------------------------------------------
-
     def install(self, spec, prefix):
+        # TODO add a conditional switch when the "binary" variant is added
         self._install_binary(spec, prefix)
 
         # If +worker is provided, call `_install_worker` to install the worker tarball
@@ -475,38 +353,31 @@ class PegasusWms(Package):
             self._install_worker(prefix)
 
     def _install_binary(self, spec, prefix):
-        """Verify and install the binary tarball that Spack has already fetched.
-
-        If +worker is enabled, also fetch the worker tarball and place it
-        (as a tarball, not extracted) into <prefix>/share/pegasus/worker/.
-        """
+        """Verify and install the binary tarball that Spack has already fetched."""
 
         import glob
 
-        # Verify the binary tarball that Spack has already fetched
-        # expected = self._get_sha256("binary")
-        # self._verify_sha256(self.stage.archive_file, expected)
-
-        # Copy the binary tarball's contents into the install prefix
-        # install_tree(self.stage.source_path, prefix)
+        # Get the path to the directory where the binary tarball was extracted
         binary_tarball_dir = join_path(
             self.stage.source_path, self._binary_tarball_extract_dest
         )
 
-        # Find the top-level condor directory (name varies by OS/version)
+        # Find the top-level Pegasus directory (name varies by OS/version)
         subdirs = glob.glob(join_path(binary_tarball_dir, "pegasus-*"))
         if not subdirs:
             raise InstallError(
                 f"Could not find extracted HTCondor directory in {binary_tarball_dir}"
             )
 
+        # Step inside the top-level extracted directory and install its
+        # contents (i.e., the contents of the binary tarball)
         install_tree(subdirs[0], prefix)
-        # install_tree(binary_tarball_dir, prefix)
 
     def _install_worker(self, prefix):
         """Fetch the worker tarball and place it into the install prefix."""
         import glob
 
+        # Get the path to the directory where the worker tarball was placed
         worker_dir = join_path(
             self.stage.source_path, self._worker_tarball_extract_dest
         )
@@ -515,51 +386,10 @@ class PegasusWms(Package):
         # (Because we want to place the compressed tarball, not the extracted contents)
         worker_tarball = glob.glob(join_path(worker_dir, "pegasus-worker-*.tar.gz"))[0]
 
+        # Create <prefix>/share/pegasus/worker and install the tarball
         dest_dir = join_path(prefix, "share", "pegasus", "worker")
         mkdirp(dest_dir)
         install(worker_tarball, dest_dir)
-        # from spack.fetch_strategy import URLFetchStrategy
-        # from spack.stage import Stage
-
-        # # Get the URL, SHA, and tarball name for the worker
-        # worker_url = self._worker_tarball_url()
-        # worker_sha = self._get_sha256("worker")
-        # worker_basename = self._tarball_basename("worker")
-
-        # tty.msg(f"Fetching Pegasus worker package from {worker_url}")
-
-        # # Prepare a Stage object for fetching and verifying the worker tarball
-        # fetcher = URLFetchStrategy(url=worker_url, sha256=worker_sha)
-        # worker_stage = Stage(
-        #     fetcher,
-        #     name=f"pegasus-worker-{self.spec.version}-stage",
-        #     path=join_path(self.stage.path, "spack-worker-stage"),
-        #     keep=False,
-        #     lock=False,
-        # )
-
-        # try:
-        #     # Fetch the worker tarball and verify its SHA
-        #     # Note that we do NOT extract the worker tarball
-        #     worker_stage.create()
-        #     worker_stage.fetch()
-        #     worker_stage.check()
-
-        #     # Place the worker tarball (as-is, not extracted) into the prefix.
-        #     worker_dir = join_path(prefix, "share", "pegasus", "worker")
-        #     mkdirp(worker_dir)
-        #     install(worker_stage.archive_file, join_path(worker_dir, worker_basename))
-
-        #     tty.msg(
-        #         f"Worker tarball installed to:\n"
-        #         f"  {join_path(worker_dir, worker_basename)}"
-        #     )
-        # finally:
-        #     worker_stage.destroy()
-
-    # -------------------------------------------------------------------------
-    # Environment
-    # -------------------------------------------------------------------------
 
     def setup_run_environment(self, env):
         # Update PATH to make the Pegasus command line tools (e.g.,

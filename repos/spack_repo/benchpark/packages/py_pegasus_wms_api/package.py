@@ -15,9 +15,6 @@ class PyPegasusWmsApi(PythonPackage):
 
     license("Apache-2.0")
 
-    # -------------------------------------------------------------------------
-    # Versions
-    # -------------------------------------------------------------------------
     version("master", branch="master", git=git)
 
     version(
@@ -34,17 +31,11 @@ class PyPegasusWmsApi(PythonPackage):
         sha256="3075378b3a1e041a88a5b204311a68b1e8d720d6db700cce5c603bb9019e2f1e",
     )
 
-    # -------------------------------------------------------------------------
-    # Dependencies
-    # -------------------------------------------------------------------------
     depends_on("python@3.6:", when="@5.1:", type=("build", "run"))
     depends_on("python@3.5:", when="@:5.0.9", type=("build", "run"))
     depends_on("py-setuptools", type="build")
     depends_on("py-pegasus-wms-common", type=("build", "run"))
 
-    # -------------------------------------------------------------------------
-    # Fetch Logic
-    # -------------------------------------------------------------------------
     def url_for_version(self, version):
         """Handle the shift to PEP 625 filename normalization in v5.1.0 and later."""
         if version < Version("5.1"):
@@ -54,9 +45,6 @@ class PyPegasusWmsApi(PythonPackage):
         # For >= 5.1, let Spack use the 'pypi' attribute to generate the URL
         return super().url_for_version(version)
 
-    # -------------------------------------------------------------------------
-    # Build System
-    # -------------------------------------------------------------------------
     @property
     def build_directory(self):
         """Get the directory from which any build commands (e.g., when getting code from GitHub) need to be run in.

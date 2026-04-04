@@ -24,12 +24,9 @@ class Htcondor(Package):
     # -------------------------------------------------------------------------
     # Versions
     #
-    # The tarballs for each version of HTCondor are architecture- and OS-specific.
-    # As a result, the `version()` entries below do not have SHAs. The SHA validation
-    # is performed manually in the `install()` function.
-    #
-    # Install with `spack install --no-checksum htcondor` to suppress the
-    # warning, or set `checksum: false` for this package in your spack.yaml.
+    # To handle binary installs correctly, we fetch the source tarball using
+    # the "version()" directive, and we fetch the binary tarball using the
+    # "resource()" directive.
     # -------------------------------------------------------------------------
 
     # HTCondor versions are split between LTS and feature releases.
@@ -75,7 +72,7 @@ class Htcondor(Package):
     #
     # Keys are "<version>/<arch_family>/<htcondor_os_label>" where:
     #   arch_family       — spec.architecture.target.family.name (x86_64 | aarch64 | ppc64le)
-    #   htcondor_os_label — resolved by _htcondor_os_label(spec) below
+    #   htcondor_os_label — a HTCondor-native operating system name
     #
     # Source: official sha256sum.txt published alongside each release at
     #   https://htcss-downloads.chtc.wisc.edu/tarball/current/<ver>/release/
@@ -156,6 +153,7 @@ class Htcondor(Package):
         },
     }
 
+    # A mapping of HTCondor OS names to corresponding Spack OS names
     _reverse_os_map = {
         "AlmaLinux8": ["almalinux8", "rhel8", "rocky8", "centos8"],
         "AlmaLinux9": ["almalinux9", "rhel9", "rocky9", "centos9"],
@@ -170,20 +168,46 @@ class Htcondor(Package):
         "SLES15SP5": ["sles15"],
     }
 
+    # Directory under "spack-src" where the contents of the binary tarball
+    # should be extracted
     _binary_tarball_extract_dest = "binary_tarball_extract"
 
+    # This nested for loop executes the "resource()" directives that tell
+    # Spack to fetch the correct binary tarball for the version of HTCondor,
+    # requested architecture, and requested operating system.
+    #
+    # This is effectively a workaround for the fact that the "version()" directive
+    # does not have a "when=..." argument.
+    #
+    # TODO if/when Spack adds support for "when=..." arguments in "version()"
+    #      directives, this entire loop can be reworked to define versions per
+    #      OS and architecture combo.
     for _ver, _ver_dict in _binary_sha256.items():
+        # Get the "series" associated with the version.
+        #
+        # If the minor version number is 0, the version is an LTS release.
+        # In this case, the series is simply "<major>.0".
+        #
+        # If the minor version number is not 0, the version is a feature release.
+        # In this case, the series is "<major>.X".
         _ver_series = _ver.split(".")[:2]
         if _ver_series[1] != "0":
             _ver_series[1] = "x"
         _ver_series = ".".join(_ver_series)
         for _arch, _arch_dict in _ver_dict.items():
             for _os_label, _sha in _arch_dict.items():
+                # Create the tarball name and URL based on:
+                #   * The version
+                #   * The version series
+                #   * The architecture (e.g., x86_64, aarch64)
+                #   * The HTCondor OS name (e.g., Ubuntu22, AlmaLinux8)
                 _tarball_name = f"condor-{_ver}-{_arch}_{_os_label}-stripped.tar.gz"
                 _tarball_url = (
                     f"https://htcss-downloads.chtc.wisc.edu"
                     f"/tarball/{_ver_series}/{_ver}/release/{_tarball_name}"
                 )
+                # Use _reverse_os_map to convert the HTCondor OS name to a list of
+                # corresponding Spack OS names
                 _spack_oses = _reverse_os_map.get(_os_label, [_os_label.lower()])
                 for _spack_os in _spack_oses:
                     resource(
@@ -192,67 +216,7 @@ class Htcondor(Package):
                         sha256=_sha,
                         when=f"@{_ver} target={_arch}: os={_spack_os}",
                         destination=_binary_tarball_extract_dest,
-                        # placement=".",
                     )
-
-    # -------------------------------------------------------------------------
-    # OS / architecture detection helpers
-    # -------------------------------------------------------------------------
-
-    # @staticmethod
-    # def _htcondor_arch(spec):
-    #     """Return the HTCondor architecture string from the concretized spec."""
-    #     family = spec.architecture.target.family.name
-    #     if family in ("x86_64", "aarch64", "ppc64le"):
-    #         return family
-    #     raise InstallError(
-    #         f"Unsupported architecture for HTCondor binary install: {family!s}.\n"
-    #         f"Source builds are not yet implemented in this package."
-    #     )
-
-    # @staticmethod
-    # def _htcondor_os_label(spec):
-    #     """Map `spec.architecture.os` to the HTCondor platform string used in
-    #     tarball filenames (e.g. `AlmaLinux9`, `Ubuntu24`, `Debian12`).
-    #     """
-    #     spack_os = spec.architecture.os
-
-    #     # Each tuple is (prefix, label_fn) where label_fn accepts the version
-    #     # suffix that follows the prefix in the spack_os string.
-    #     os_map = [
-    #         # RHEL family -- uses AlmaLinux due to ABI compatibility
-    #         ("almalinux", lambda v: f"AlmaLinux{v.split('.')[0]}"),
-    #         ("rhel", lambda v: f"AlmaLinux{v.split('.')[0]}"),
-    #         ("centos", lambda v: f"AlmaLinux{v.split('.')[0]}"),
-    #         ("rocky", lambda v: f"AlmaLinux{v.split('.')[0]}"),
-    #         ("ol", lambda v: f"AlmaLinux{v.split('.')[0]}"),
-    #         # Debian family
-    #         ("ubuntu", lambda v: f"Ubuntu{v.split('.')[0]}"),
-    #         ("debian", lambda v: f"Debian{v.split('.')[0]}"),
-    #         # Amazon Linux — only 2023 is supported by HTCondor
-    #         ("amzn", lambda v: "AmazonLinux2023"),
-    #         # SUSE
-    #         ("opensuse-leap", lambda v: f"openSUSE{v.split('.')[0]}"),
-    #         ("sles", lambda v: f"SLES{v.split('.')[0]}SP{v.split('.')[1]}"),
-    #     ]
-
-    #     # Checks if the OS name from Spack matches a prefix in the mapping
-    #     # above. If so, get the version suffix and pass it to the corresponding
-    #     # lambda in the mapping. The result of the mapping gets returned.
-    #     for prefix, label_fn in os_map:
-    #         if spack_os.startswith(prefix):
-    #             version_suffix = spack_os[len(prefix) :]
-    #             return label_fn(version_suffix)
-
-    #     raise InstallError(
-    #         f"No HTCondor binary tarball mapping for Spack OS {spack_os!s}.\n"
-    #         f"Add an entry to _htcondor_os_label() or check\n"
-    #         f"  https://htcss-downloads.chtc.wisc.edu/tarball/<ver_series>/<ver>/release/"
-    #     )
-
-    # -------------------------------------------------------------------------
-    # URL / fetch helpers
-    # -------------------------------------------------------------------------
 
     def url_for_version(self, version):
         """Return the platform-specific binary tarball URL for `version`."""
@@ -265,88 +229,26 @@ class Htcondor(Package):
         if ver_series[1] != "0":
             ver_series[1] = "x"
         ver_series = ".".join(ver_series)
-        # Convert the architecture from Spack's naming convention into
-        # HTCondor's
-        # arch = self._htcondor_arch(self.spec)
-        # Convert the OS name from Spack's naming convention into HTCondor's
-        # os_label = self._htcondor_os_label(self.spec)
-        # Build and return the URL
-        # name = f"condor-{ver}-{arch}_{os_label}-stripped.tar.gz"
+        # Generate the full URL for the source tarball
         name = f"condor-{ver}-src.tar"
         return (
             f"https://htcss-downloads.chtc.wisc.edu"
             f"/tarball/{ver_series}/{ver}/release/{name}"
         )
 
-    # def _binary_tarball_name(self):
-    #     """Build the name of the tarball for `install()`."""
-    #     arch = self._htcondor_arch(self.spec)
-    #     os_label = self._htcondor_os_label(self.spec)
-    #     ver = str(self.spec.version)
-    #     return f"condor-{ver}-{arch}_{os_label}-stripped.tar.gz"
-
-    # def _binary_tarball_sha256(self):
-    #     """Get the expected SHA256 for the current spec."""
-    #     # Convert the first two components of the version into the
-    #     # version series. If the version is an LTS, the series will be
-    #     # "<major>.0". If the version is a feature release, the series
-    #     # will be "<major>.x"
-    #     ver = str(self.spec.version)
-    #     ver_series = ver.split(".")[:2]
-    #     if ver_series[1] != "0":
-    #         ver_series[1] = "x"
-    #     ver_series = ".".join(ver_series)
-    #     # Build key for `_binary_sha256` based on architecture
-    #     # and OS name
-    #     arch = self._htcondor_arch(self.spec)
-    #     os_label = self._htcondor_os_label(self.spec)
-    #     key = f"{arch}/{os_label}"
-    #     # Return the SHA, or raise an error if no SHA exists
-    #     try:
-    #         return self._binary_sha256[ver][key]
-    #     except KeyError:
-    #         raise InstallError(
-    #             f"No binary SHA256 entry for version={ver}, platform={key}.\n"
-    #             f"Check _binary_sha256 in the package and add the hash from:\n"
-    #             f"  https://htcss-downloads.chtc.wisc.edu/tarball/{ver_series}"
-    #             f"/{ver}/release/sha256sum.txt"
-    #         )
-
-    # -------------------------------------------------------------------------
-    # Install
-    # -------------------------------------------------------------------------
-
     def install(self, spec, prefix):
+        # TODO add a conditional switch when the "binary" variant is added
         self._install_binary(spec, prefix)
 
     def _install_binary(self, spec, prefix):
         """Verify and install the binary tarball that Spack has already fetched."""
 
-        # Verify the checksum for the downloaded tarball against the expected
-        # value obtained from `_binary_tarball_sha256`
-        # expected = self._binary_tarball_sha256()
-        # tty.msg(f"Verifying SHA256 of {os.path.basename(self.stage.archive_file)}...")
-        # hasher = hashlib.sha256()
-        # with open(self.stage.archive_file, "rb") as f:
-        #     for chunk in iter(lambda: f.read(1 << 20), b""):
-        #         hasher.update(chunk)
-        # actual = hasher.hexdigest()
-        # # If the SHA is a mismatch, error out
-        # if actual != expected:
-        #     raise InstallError(
-        #         f"SHA256 mismatch for {os.path.basename(self.stage.archive_file)}:\n"
-        #         f"  expected: {expected}\n"
-        #         f"  actual:   {actual}"
-        #     )
-
         import glob
 
-        # Copy the contents of the unpacked tarball into the Spack installation
-        # prefix
+        # Get the path to the directory where the binary tarball was extracted
         binary_tarball_dir = join_path(
             self.stage.source_path, self._binary_tarball_extract_dest
         )
-        # install_tree(self.stage.source_path, prefix)
 
         # Find the top-level condor directory (name varies by OS/version)
         subdirs = glob.glob(join_path(binary_tarball_dir, "condor-*"))
@@ -355,7 +257,8 @@ class Htcondor(Package):
                 f"Could not find extracted HTCondor directory in {binary_tarball_dir}"
             )
 
-        # Step inside the top-level directory and install its contents
+        # Step inside the top-level directory and install its contents (i.e., the contents
+        # of the binary tarball)
         install_tree(subdirs[0], prefix)
 
         # If running with +personal, run the "make-personal-from-tarball" script
@@ -382,10 +285,6 @@ class Htcondor(Package):
                         f"LIBEXEC     = {prefix}/libexec/condor\n"
                         f"include : $(RELEASE_DIR)/etc/condor_config.local.stub\n"
                     )
-
-    # -------------------------------------------------------------------------
-    # Environment
-    # -------------------------------------------------------------------------
 
     def setup_run_environment(self, env):
         # Set the CONDOR_CONFIG environment variable to point to the config

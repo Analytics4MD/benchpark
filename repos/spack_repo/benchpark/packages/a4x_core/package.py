@@ -10,7 +10,6 @@ from spack_repo.builtin.build_systems.cmake import CMakePackage
 class A4xCore(CMakePackage):
     """TBA"""
 
-    # TODO: update homepage and git URL for your project
     homepage = "https://github.com/Analytics4MD/a4x-core"
     git = "https://github.com/Analytics4MD/a4x-core.git"
 
@@ -21,63 +20,47 @@ class A4xCore(CMakePackage):
     version("main", branch="main")
     version("0.1.0", tag="v0.1.0")
 
-    # ---------------------------------------------------------------------------
-    # Variants
-    # ---------------------------------------------------------------------------
-
-    # DTL (Data Transport Layer) plugins — at least one must be enabled
     variant(
         "dtl",
         values=auto_or_any_combination_of("mpi", "filesystem", "dyad").with_default(
             ("mpi", "filesystem")
         ),
-        description="",  # TODO add description
+        description="The DTL plugins to build with A4X-Core",  # TODO add description
     )
-
-    # Profiler support
-    variant("caliper", default=False, description="")
-    variant("dftracer", default=False, description="")
-
-    # Logging level compiled into the library
+    variant(
+        "caliper",
+        default=False,
+        description="Enable Caliper support for performance monitoring",
+    )
+    variant(
+        "dftracer",
+        default=False,
+        description="Enable DFTracer support for performance monitoring",
+    )
     variant(
         "log-level",
         default="none",
         values=("none", "trace", "debug", "info", "warn", "error", "critical"),
         description="Compiled logging level support for A4X",
     )
-
-    # Tests
     variant("tests", default=False, description="Build and enable unit tests")
-
-    # ---------------------------------------------------------------------------
-    # Dependencies
-    # ---------------------------------------------------------------------------
 
     # Language requirements
     depends_on("cxx", type="build")
 
-    # Always required
+    # Dependencies that are always required
     depends_on("mpi")
     depends_on("nlohmann-json")
     depends_on("fmt")
     depends_on("spdlog")
 
-    # DTL-conditional dependencies
+    # Optional dependencies for DTL plugins
     depends_on("dyad", when="dtl=dyad")
 
-    # Profiler-conditional dependencies
+    # Optional dependencies for performance monitoring
     depends_on("caliper", when="+caliper")
     depends_on("adiak", when="+caliper")
     depends_on("py-pydftracer", when="+dftracer")
-
-    # Test dependencies
-    # depends_on("googletest", when="+tests")
-
-    # ---------------------------------------------------------------------------
-    # Conflict / validity checks
-    # ---------------------------------------------------------------------------
-
-    # At least one DTL plugin must be enabled (mirrors the CMake fatal error)
 
     # TODO change into a for loop over combinations/permutations
     conflicts(
@@ -85,10 +68,6 @@ class A4xCore(CMakePackage):
         when="+dftracer",
         msg="A4X-Core cannot be built with multiple profilers simultaneously",
     )
-
-    # ---------------------------------------------------------------------------
-    # CMake arguments
-    # ---------------------------------------------------------------------------
 
     def cmake_args(self):
         args = []

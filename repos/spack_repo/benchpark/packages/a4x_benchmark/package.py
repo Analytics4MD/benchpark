@@ -8,9 +8,10 @@ from spack_repo.builtin.build_systems.cmake import CMakePackage
 
 
 class A4xBenchmark(CMakePackage):
-    """A4X-Benchmark: benchmarking framework for the A4X project."""
+    """A benchmark for evaluating the effects of data management tools and workflow/resource management
+    systems on the performance of scientific computing workflows.
+    """
 
-    # TODO: update homepage and git URL for your project
     homepage = "https://github.com/Analytics4MD/a4x-benchmark"
     git = "https://github.com/Analytics4MD/a4x-benchmark.git"
 
@@ -21,28 +22,18 @@ class A4xBenchmark(CMakePackage):
     version("main", branch="main")
     version("0.1.0", tag="v0.1.0")
 
-    # ---------------------------------------------------------------------------
-    # Variants
-    # ---------------------------------------------------------------------------
-
-    # Shared vs. static libraries
     variant("shared", default=True, description="Build shared libraries")
-
-    # Tests
     variant("tests", default=False, description="Build and enable unit tests")
-
-    # ---------------------------------------------------------------------------
-    # Dependencies
-    # ---------------------------------------------------------------------------
 
     # Language requirements
     depends_on("c", type="build")
     depends_on("cxx", type="build")
 
-    # Python interpreter is used at build time by CMake to discover install paths
+    # Python is required at build time for discovering install paths and at runtime
+    # for running the various utility, setup, and teardown commands.
     depends_on("python@3:", type=("build", "run"))
 
-    # Always-required C++ dependencies
+    # Dependencies for the C++ code
     depends_on("mpi")
     depends_on("nlohmann-json")
     depends_on("fmt")
@@ -51,15 +42,12 @@ class A4xBenchmark(CMakePackage):
     depends_on("caliper")
     depends_on("a4x-core")
 
-    # Runtime: the Python library that gets installed alongside the C++ code
+    # Dependencies for the Python code
     depends_on("py-a4x-orchestration@0.1.0b5:0.1.0", type="run")
     depends_on("py-a4x-pegasus-wms@0.1.0b0:0.1.0 ~api_only", type="run")
 
+    # Dependencies for testing
     depends_on("py-pytest", type="test", when="+tests")
-
-    # ---------------------------------------------------------------------------
-    # CMake arguments
-    # ---------------------------------------------------------------------------
 
     def cmake_args(self):
         args = []
@@ -74,10 +62,6 @@ class A4xBenchmark(CMakePackage):
         args.append(self.define("ENABLE_CODE_COVERAGE", False))
 
         return args
-
-    # ---------------------------------------------------------------------------
-    # Optional: run CTest after build when tests are enabled
-    # ---------------------------------------------------------------------------
 
     @run_after("build")
     def check(self):
