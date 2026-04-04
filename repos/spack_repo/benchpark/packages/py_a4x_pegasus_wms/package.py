@@ -20,6 +20,7 @@ class PyA4xPegasusWms(PythonPackage):
     version(
         "0.1.0b0",
         sha256="57b65117331be9f369a41015752f20a30604cf223b3a2f38ff0c9c4a7975146a",
+        preferred=True,
     )
     version(
         "0.1.0a1",

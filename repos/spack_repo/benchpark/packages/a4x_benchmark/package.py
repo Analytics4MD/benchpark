@@ -53,7 +53,7 @@ class A4xBenchmark(CMakePackage):
 
     # Runtime: the Python library that gets installed alongside the C++ code
     depends_on("py-a4x-orchestration@0.1.0b5:0.1.0", type="run")
-    depends_on("py-a4x-pegasus-wms@0.1.0b0:0.1.0", type="run")
+    depends_on("py-a4x-pegasus-wms@0.1.0b0:0.1.0 ~api_only", type="run")
 
     depends_on("py-pytest", type="test", when="+tests")
 
@@ -64,6 +64,10 @@ class A4xBenchmark(CMakePackage):
     def cmake_args(self):
         args = []
 
+        python_prefix = self.spec["python"].prefix
+
+        args.append(self.define("Python_ROOT_DIR", python_prefix))
+        args.append(self.define("Python3_ROOT_DIR", python_prefix))
         args.append(self.define_from_variant("BUILD_SHARED_LIBS", "shared"))
         args.append(self.define_from_variant("ENABLE_UNIT_TESTS", "tests"))
 

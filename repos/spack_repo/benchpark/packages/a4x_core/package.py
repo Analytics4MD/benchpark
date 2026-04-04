@@ -28,9 +28,9 @@ class A4xCore(CMakePackage):
     # DTL (Data Transport Layer) plugins — at least one must be enabled
     variant(
         "dtl",
-        default=("mpi", "filesystem"),
-        values=auto_or_any_combination_of("mpi", "filesystem", "dyad"),
-        multi=True,
+        values=auto_or_any_combination_of("mpi", "filesystem", "dyad").with_default(
+            ("mpi", "filesystem")
+        ),
         description="",  # TODO add description
     )
 
@@ -43,7 +43,6 @@ class A4xCore(CMakePackage):
         "log-level",
         default="none",
         values=("none", "trace", "debug", "info", "warn", "error", "critical"),
-        multi=False,
         description="Compiled logging level support for A4X",
     )
 
@@ -95,17 +94,13 @@ class A4xCore(CMakePackage):
         args = []
 
         # DTL plugins
-        args.append(self.define_from_variant("WITH_MPI_DTL", "dtl=mpi"))
-        args.append(self.define_from_variant("WITH_FS_DTL", "dtl=filesystem"))
-        args.append(self.define_from_variant("WITH_DYAD_DTL", "dtl=dyad"))
+        args.append(self.define("WITH_MPI_DTL", "dtl=mpi" in self.spec))
+        args.append(self.define("WITH_FS_DTL", "dtl=filesystem" in self.spec))
+        args.append(self.define("WITH_DYAD_DTL", "dtl=dyad" in self.spec))
 
         # Serialization
         # TODO consider if this should be removed
-        args.append(
-            self.define(
-                "WITH_NLOHMANN_SERIALIZATION",
-            )
-        )
+        args.append(self.define("WITH_NLOHMANN_SERIALIZATION", "ON"))
 
         # Profiler
         if "+caliper" in self.spec:
@@ -117,7 +112,7 @@ class A4xCore(CMakePackage):
 
         # Log level (CMake expects uppercase)
         args.append(
-            self.define("A4X_LOG_LEVEL", self.spec.variants["log_level"].value.upper())
+            self.define("A4X_LOG_LEVEL", self.spec.variants["log-level"].value.upper())
         )
 
         # Unit tests

@@ -40,7 +40,7 @@ class PyA4xOrchestration(PythonPackage):
     depends_on("py-ruamel-yaml@0.18:0.18", type=("build", "run"))
     depends_on("py-networkx", type=("build", "run"))
     depends_on("py-jinja2", type=("build", "run"))
-    depends_on("py-pydantic", type=("build", "run"))
+    depends_on("py-pydantic@2:", type=("build", "run"))
     depends_on("py-typing-extensions", type=("build", "run"))
 
     # -------------------------------------------------------------------------
