@@ -17,8 +17,8 @@ class Dyad(CMakePackage):
 
     version("main", branch="main")
     version("0.2.0rc0", commit="8c24e75a7b7994a6ecc7ade73ef555358ec55ad1")
-    version("0.1.1", sha256="FIXME")  # Replace with actual sha256
-    version("0.1.0", sha256="FIXME")  # Replace with actual sha256
+    # version("0.1.1", sha256="FIXME")  # Replace with actual sha256
+    # version("0.1.0", sha256="FIXME")  # Replace with actual sha256
 
     # ── Data transport variant (mutually exclusive) ──────────────────────
     variant(
