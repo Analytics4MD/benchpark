@@ -57,6 +57,8 @@ class Dyad(CMakePackage):
     )
 
     # ── Required dependencies ────────────────────────────────────────────
+    depends_on("c", type="build")
+    depends_on("cxx", type="build")
     depends_on("cmake@3.12:", type="build")
     depends_on("pkgconfig", type="build")
     depends_on("flux-core")
