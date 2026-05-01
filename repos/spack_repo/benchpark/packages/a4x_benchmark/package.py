@@ -39,8 +39,6 @@ class A4xBenchmark(CMakePackage):
     depends_on("nlohmann-json")
     depends_on("fmt")
     depends_on("adiak")
-    # TODO make optional when A4X-Core perf shim is done
-    depends_on("caliper")
     depends_on("a4x-core")
 
     # Dependencies for the Python code
