@@ -20,7 +20,8 @@ class A4xBenchmark(CMakePackage):
     license("Apache-2.0 WITH LLVM-exception", checked_by="ilumsden")
 
     version("main", branch="main")
-    version("0.1.0", tag="v0.1.0")
+    version("0.1.0b2", tag="v0.1.0b2", preferred=True)
+    version("0.1.0b1", tag="v0.1.0b1")
 
     variant("shared", default=True, description="Build shared libraries")
     variant("tests", default=False, description="Build and enable unit tests")
