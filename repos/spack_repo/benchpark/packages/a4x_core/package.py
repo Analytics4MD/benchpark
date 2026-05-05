@@ -11,7 +11,8 @@ class A4xCore(CMakePackage):
     """TBA"""
 
     homepage = "https://github.com/Analytics4MD/a4x-core"
-    git = "https://github.com/Analytics4MD/a4x-core.git"
+    # git = "https://github.com/Analytics4MD/a4x-core.git"
+    git = "git@github.com:Analytics4MD/a4x-core.git"
 
     maintainers("ilumsden")
 

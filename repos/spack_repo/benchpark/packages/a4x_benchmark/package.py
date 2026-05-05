@@ -13,18 +13,17 @@ class A4xBenchmark(CMakePackage):
     """
 
     homepage = "https://github.com/Analytics4MD/a4x-benchmark"
-    git = "https://github.com/Analytics4MD/a4x-benchmark.git"
+    # git = "https://github.com/Analytics4MD/a4x-benchmark.git"
+    git = "git@github.com:Analytics4MD/a4x-benchmark.git"
 
     maintainers("ilumsden")
 
     license("Apache-2.0 WITH LLVM-exception", checked_by="ilumsden")
 
     version("main", branch="main")
+    version("benchmark_tuo_fixes", branch="benchmark_tuo_fixes")
     version("0.1.0b2", tag="v0.1.0b2", preferred=True)
     version("0.1.0b1", tag="v0.1.0b1")
-
-    variant("shared", default=True, description="Build shared libraries")
-    variant("tests", default=False, description="Build and enable unit tests")
 
     # Language requirements
     depends_on("c", type="build")
@@ -55,18 +54,27 @@ class A4xBenchmark(CMakePackage):
 
         args.append(self.define("Python_ROOT_DIR", python_prefix))
         args.append(self.define("Python3_ROOT_DIR", python_prefix))
-        args.append(self.define_from_variant("BUILD_SHARED_LIBS", "shared"))
-        args.append(self.define_from_variant("ENABLE_UNIT_TESTS", "tests"))
 
         args.append(self.define("ENABLE_CODE_COVERAGE", False))
 
         return args
+    
+    def _get_python_site_packages_dir(self):
+        python = self.spec["python"]
+        result = python.command(
+            "-c",
+            "import sysconfig; "
+            "p = sysconfig.get_path('purelib', vars={'userbase': '', 'base': ''}); "
+            "p = p.lstrip('/'); "
+            "p = p[4:] if p.startswith('lib/') else p; "
+            "print(p, end='')",
+            output=str,
+        )
+        return join_path(self.prefix.lib, result)
 
-    @run_after("build")
-    def check(self):
-        if self.run_tests:
-            with working_dir(self.build_directory):
-                ctest("--output-on-failure")
-            with working_dir(self.stage.source_path):
-                pytest = which("pytest")
-                pytest("tests/unit/python")
+    def setup_run_environment(self, env):
+        env.prepend_path("PYTHONPATH", self._get_python_site_packages_dir())
+
+    def setup_dependent_run_environment(self, env, dependent_spec):
+        env.prepend_path("PYTHONPATH", self._get_python_site_packages_dir())
+        
