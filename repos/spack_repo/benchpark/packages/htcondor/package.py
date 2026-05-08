@@ -286,6 +286,13 @@ class Htcondor(Package):
                         f"include : $(RELEASE_DIR)/etc/condor_config.local.stub\n"
                     )
 
+    @run_after("install")
+    def make_condor_sh_executable(self):
+        if "+personal" in self.spec:
+            condor_sh_path = join_path(self.prefix, "condor.sh")
+            if os.path.exists(condor_sh_path):
+                os.chmod(condor_sh_path, 0o755)
+
     def setup_run_environment(self, env):
         # Set the CONDOR_CONFIG environment variable to point to the config
         # in the install prefix only if not already set
@@ -294,12 +301,19 @@ class Htcondor(Package):
             if "CONDOR_CONFIG" not in os.environ:
                 env.set("CONDOR_CONFIG", condor_config)
 
+        # Set the CONDOR_LOCATION variable to mimic condor.sh
+        env.set("CONDOR_LOCATION", self.prefix)
+
         # Update PATH to make the HTCondor command line tools (e.g., condor_submit,
         # condor_q) available
-        env.prepend_path("PATH", join_path(self.prefix, "bin"))
+        env.prepend_path("PATH", self.prefix.sbin)
+        env.prepend_path("PATH", self.prefix.bin)
 
         # Update MANPATH to make HTCondor's manpages available
         env.prepend_path("MANPATH", join_path(self.prefix, "man"))
+
+        # Update LD_LIBRARY_PATH to mimic condor.sh
+        env.prepend_path("LD_LIBRARY_PATH", self.prefix.lib)
 
         # Search for the HTCondor Python bindings and, if found, add
         # their directory to PYTHONPATH.
