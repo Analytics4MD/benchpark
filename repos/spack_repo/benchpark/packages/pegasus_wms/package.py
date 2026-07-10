@@ -1,6 +1,8 @@
 import hashlib
 import os
 
+from spack.build_systems.generic import GenericBuilder as SpackGenericBuilder
+from spack.build_systems.generic import PythonBuilder as SpackPythonBuilder
 from spack.package import *
 
 
@@ -36,6 +38,11 @@ class PegasusWms(Package):
     # "resource()" directive.
     # -------------------------------------------------------------------------
 
+    # TODO replace with 6.0 when that version comes out with CMake + scikit-build support
+    version(
+        "py_install_branch",
+        branch="build_overhaul2",
+    )
     version(
         "5.1.2",
         sha256="6633c0f4196987831ca0121d374333a4f00f21c44de1d97b11fab5593e24bc42",
@@ -48,6 +55,15 @@ class PegasusWms(Package):
     version(
         "5.0.9",
         sha256="e5d10b0c79f4c33d65791329584f2583d65589db1484144a349320d59faee7b3",
+    )
+
+    # -------------------------------------------------------------------------
+    # Build Systems
+    # -------------------------------------------------------------------------
+    build_system(
+        # TODO remove "py_install_branch" when 6.0 comes out with CMake + scikit-build support
+        conditional("python", when="@6.0:,py_install_branch"),
+        conditional("generic", when="@:5.99"),
     )
 
     # -------------------------------------------------------------------------
@@ -77,19 +93,154 @@ class PegasusWms(Package):
         default=False,
         description="Install necessary dependencies for using PostgreSQL as the runtime database.",
     )
+    variant(
+        "cwl",
+        default=False,
+        description="Install necessary dependencies for supporting CWL",
+    )
+    variant(
+        "build_type",
+        default="Release",
+        description="Build type used in CMake",
+        when="@6.0:,py_install_branch",
+        values=("Debug", "Release", "RelWithDebInfo", "MinSizeRel"),
+    )
+    variant(
+        "mpi",
+        default=False,
+        description="Build the pegasus-mpi-cluster",
+        when="@6.0:,py_install_branch",
+    )
 
     # -------------------------------------------------------------------------
     # Dependencies
     # -------------------------------------------------------------------------
 
-    depends_on("java@17:", type="run")
-    depends_on("python@3.6:", type="run")
+    depends_on("java@17:", when="@:5", type="run")
+    # TODO confirm that this is right
+    # The Pegasus docs for 5.X says Java 17, but the CMake on the build_overhaul2 branch says Java 8
+    depends_on("java@8:", when="@6.0:,py_install_branch", type="run")
     depends_on("py-pyyaml", type="run")
     depends_on("py-gitpython", type="run")
     depends_on("htcondor@23:", type="run")
 
     depends_on("py-mysqlclient", when="+mysql", type="run")
     depends_on("py-psycopg2", when="+postgre", type="run")
+
+    with when("build_system=generic"):
+        depends_on("python@3.6:", type="run")
+
+    with when("build_system=python"):
+        # TODO figure out what to do with dependencies without Spack packages:
+        #  - Flask-Caching
+        depends_on("c", type="build")
+        depends_on("cxx", type="build")
+        depends_on("cmake@3.20:", type="build")
+        depends_on("py-scikit-build-core@0.9:", type="build")
+        depends_on("git", type="build")
+        depends_on("python@3.10:", type=("build", "run"))
+        depends_on("py-click@8.0:", type=("build", "run"))
+        depends_on("py-pamela", type=("build", "run"))
+        depends_on("py-pika", type=("build", "run"))
+        depends_on("py-werkzeug@:3.0", type=("build", "run"))
+        depends_on("py-flask@2.2:2", type=("build", "run"))
+        depends_on("py-requests", type=("build", "run"))
+        depends_on("py-sqlalchemy@1.4:", type=("build", "run"))
+        depends_on("py-boto3@1.12.1:", type=("build", "run"))
+        depends_on("py-globus-sdk@3.23.0:3", type=("build", "run"))
+        depends_on("mpi", when="+mpi", type=("build", "run"))
+        depends_on("py-cwl-utils@0.11:", when="+cwl", type=("build", "run"))
+        depends_on("py-jsonschema@3.2:", when="+cwl", type=("build", "run"))
+
+    def setup_run_environment(self, env):
+        ##################################
+        # Common run environment updates
+        ##################################
+
+        # Update PATH to make the Pegasus command line tools (e.g.,
+        # pegasus-plan, pegasus-run, pegasus-status) available
+        env.prepend_path("PATH", join_path(self.prefix, "bin"))
+
+        # Update MANPATH if man pages are present
+        man_dir = join_path(self.prefix, "share", "man")
+        if os.path.isdir(man_dir):
+            env.prepend_path("MANPATH", man_dir)
+
+        ##################################
+        # Build system-specific updates
+        ##################################
+
+        if self.spec.satisfies("build_system=python"):
+            # ------------------------------
+            # Python Install Updates
+            # ------------------------------
+            site_packages = self.spec["python"].package.site_packages_dir
+            pegasus_data_dir = join_path(self.prefix, site_packages, "Pegasus", "data")
+            if self.spec.satisfies("+worker"):
+                worker_dir = join_path(pegasus_data_dir, "worker-packages")
+                if os.path.isdir(worker_dir):
+                    env.set("PEGASUS_WORKER_PACKAGE_DIR", worker_dir)
+            java_dir = join_path(pegasus_data_dir, "java")
+            if os.paht.isdir(java_dir):
+                env.prepend_path("CLASSPATH", java_dir)
+            # Since the build system is "Python" in this branch, all other updates
+            # (e.g., to PYTHONPATH) are handled automatically by Spack
+        else:
+            # ------------------------------
+            # Legacy Tarball Install Updates
+            # ------------------------------
+
+            # If +worker was enabled, set PEGASUS_WORKER_PACKAGE_DIR to point to the
+            # directory where the worker tarball can be found. This is a convenience
+            # environment variable for users.
+            if "+worker" in self.spec:
+                worker_dir = join_path(self.prefix, "share", "pegasus", "worker")
+                if os.path.isdir(worker_dir):
+                    env.set("PEGASUS_WORKER_PACKAGE_DIR", worker_dir)
+
+            # Invoke `pegasus-config` (in the <preifx>/bin directory) to try to identify
+            # the correct PYTHONPATH and CLASSPATH.
+            #
+            # The `set_pythonpath` and `set_classpath` variables are used to track the
+            # success of this process. If not successful, a fallback is invoked below
+            pegasus_config_path = join_path(self.prefix, "bin", "pegasus-config")
+            set_pythonpath = False
+            set_classpath = False
+            if os.path.isfile(pegasus_config_path):
+                pegasus_config = Executable(pegasus_config_path)
+
+                # Try to identify and set PYTHONPATH using `pegasus-config`
+                try:
+                    python_path = pegasus_config("--python", output=str).strip()
+                    if python_path and os.path.isdir(python_path):
+                        env.prepend_path("PYTHONPATH", python_path)
+                        set_pythonpath = True
+                except (ProcessError, OSError):
+                    pass
+
+                # Try to identify and set CLASSPATH using `pegasus-config`
+                try:
+                    classpath = pegasus_config("--classpath", output=str).strip()
+                    if classpath:
+                        env.prepend_path("CLASSPATH", classpath)
+                        set_classpath = True
+                except (ProcessError, OSError):
+                    pass
+
+            # Fallback: manually search for Python and Java paths
+            if not set_pythonpath:
+                lib64_python = join_path(self.prefix, "lib64", "pegasus", "python")
+                if os.path.isdir(lib64_python):
+                    env.prepend_path("PYTHONPATH", lib64_python)
+
+                lib_python = join_path(self.prefix, "lib", "pegasus", "python")
+                if os.path.isdir(lib_python):
+                    env.prepend_path("PYTHONPATH", lib_python)
+
+            if not set_classpath:
+                java_dir = join_path(self.prefix, "share", "pegasus", "java")
+                if os.path.isdir(java_dir):
+                    env.prepend_path("CLASSPATH", java_dir)
 
     # -------------------------------------------------------------------------
     # Per-platform tarball SHA256 checksums
@@ -344,7 +495,11 @@ class PegasusWms(Package):
                         expand=False,
                     )
 
-    def install(self, spec, prefix):
+
+class GenericBuilder(SpackGenericBuilder):
+    """Handles installs of Pegasus < 6.0 using pre-built binary tarballs."""
+
+    def install(self, pkg, spec, prefix):
         # TODO add a conditional switch when the "binary" variant is added
         self._install_binary(spec, prefix)
 
@@ -391,64 +546,33 @@ class PegasusWms(Package):
         mkdirp(dest_dir)
         install(worker_tarball, dest_dir)
 
-    def setup_run_environment(self, env):
-        # Update PATH to make the Pegasus command line tools (e.g.,
-        # pegasus-plan, pegasus-run, pegasus-status) available
-        env.prepend_path("PATH", join_path(self.prefix, "bin"))
 
-        # If +worker was enabled, set PEGASUS_WORKER_PACKAGE_DIR to point to the
-        # directory where the worker tarball can be found. This is a convenience
-        # environment variable for users.
-        if "+worker" in self.spec:
-            worker_dir = join_path(self.prefix, "share", "pegasus", "worker")
-            if os.path.isdir(worker_dir):
-                env.set("PEGASUS_WORKER_PACKAGE_DIR", worker_dir)
+class PythonBuilder(SpackPythonBuilder):
+    """Handles installs of Pegasus >= 6.0 using builds with pyproject.toml + scikit-build-core"""
 
-        # Invoke `pegasus-config` (in the <preifx>/bin directory) to try to identify
-        # the correct PYTHONPATH and CLASSPATH.
-        #
-        # The `set_pythonpath` and `set_classpath` variables are used to track the
-        # success of this process. If not successful, a fallback is invoked below
-        pegasus_config_path = join_path(self.prefix, "bin", "pegasus-config")
-        set_pythonpath = False
-        set_classpath = False
-        if os.path.isfile(pegasus_config_path):
-            pegasus_config = Executable(pegasus_config_path)
+    def config_settings(self, spec, prefix):
+        settings = {}
 
-            # Try to identify and set PYTHONPATH using `pegasus-config`
-            try:
-                python_path = pegasus_config("--python", output=str).strip()
-                if python_path and os.path.isdir(python_path):
-                    env.prepend_path("PYTHONPATH", python_path)
-                    set_pythonpath = True
-            except (ProcessError, OSError):
-                pass
+        settings["cmake.build_type"] = spec.variants["build_type"].value
 
-            # Try to identify and set CLASSPATH using `pegasus-config`
-            try:
-                classpath = pegasus_config("--classpath", output=str).strip()
-                if classpath:
-                    env.prepend_path("CLASSPATH", classpath)
-                    set_classpath = True
-            except (ProcessError, OSError):
-                pass
+        other_cmake_args = [
+            "-DPEGASUS_BUILD_C=ON",
+            "-DPEGASUS_BUILD_JAVA=ON",
+        ]
 
-        # Fallback: manually search for Python and Java paths
-        if not set_pythonpath:
-            lib64_python = join_path(self.prefix, "lib64", "pegasus", "python")
-            if os.path.isdir(lib64_python):
-                env.prepend_path("PYTHONPATH", lib64_python)
+        if spec.satisfies("+mpi"):
+            other_cmake_args.append("-DPEGASUS_BUILD_MPI=ON")
+        else:
+            other_cmake_args.append("-DPEGASUS_BUILD_MPI=OFF")
 
-            lib_python = join_path(self.prefix, "lib", "pegasus", "python")
-            if os.path.isdir(lib_python):
-                env.prepend_path("PYTHONPATH", lib_python)
+        if spec.satisfies("+worker"):
+            raise RuntimeError(
+                "Currently, building the worker will not work with Spack because of pip installs that happen inside Pegasus's CMake"
+            )
+            other_cmake_args.append("-DPEGASUS_BUILD_WORKER=ON")
+        else:
+            other_cmake_args.append("-DPEGASUS_BUILD_WORKER=OFF")
 
-        if not set_classpath:
-            java_dir = join_path(self.prefix, "share", "pegasus", "java")
-            if os.path.isdir(java_dir):
-                env.prepend_path("CLASSPATH", java_dir)
+        settings["cmake.args"] = ";".join(other_cmake_args)
 
-        # Update MANPATH if man pages are present
-        man_dir = join_path(self.prefix, "share", "man")
-        if os.path.isdir(man_dir):
-            env.prepend_path("MANPATH", man_dir)
+        return settings
